@@ -1,4 +1,5 @@
 import os, sys
+from traceback import print_exc
 from typing import Callable, Iterable
 from argparse import ArgumentParser
 from importlib import machinery
@@ -87,22 +88,25 @@ if OUT_FILENAME:
     out_file.write(',,' + ','.join(METRICS.split(',')) + '\n')
     print(METRICS)
 
-for dataname in DATASETS:
-    for i, (model_filename, weights_filename) in enumerate(zip(MODELS, WEIGHTS)):
-        model_name = model_filename.split(os.sep)[-1].replace('.py', '')
-        model = load_model(model_filename, weights_filename)
-        evaluator = ClassificationEvaluator(model, dataname, INPUT_SIZE, NORMALIZE_INPUT, FLATTEN_INPUT, SUBSAMPLE_RATE)
-        result = evaluator.evaluate(batch_size=BATCH_SIZE, metrics=METRICS, device=DEVICE, log_streams=log_streams)
+try:
+    for dataname in DATASETS:
+        for i, (model_filename, weights_filename) in enumerate(zip(MODELS, WEIGHTS)):
+            model_name = model_filename.split(os.sep)[-1].replace('.py', '')
+            model = load_model(model_filename, weights_filename)
+            evaluator = ClassificationEvaluator(model, dataname, INPUT_SIZE, NORMALIZE_INPUT, FLATTEN_INPUT, SUBSAMPLE_RATE)
+            result = evaluator.evaluate(batch_size=BATCH_SIZE, metrics=METRICS, device=DEVICE, log_streams=log_streams)
 
-        first_column = dataname if i == 0 else ''
-        scores = [str(v) for v in result.values()]
-        line = ','.join([first_column, model_name] + scores) + '\n'
-        out_file.writelines(line)
+            first_column = dataname if i == 0 else ''
+            scores = [str(v) for v in result.values()]
+            line = ','.join([first_column, model_name] + scores) + '\n'
+            out_file.writelines(line)
 
-        for stream in log_streams:
-            print(file=stream)
-
-for file in (log_file, out_file):
-    if file:
-        file.flush()
-        file.close()
+            for stream in log_streams:
+                print(file=stream)
+except Exception:
+    print_exc(log_file)
+finally:
+    for file in (log_file, out_file):
+        if file:
+            file.flush()
+            file.close()
