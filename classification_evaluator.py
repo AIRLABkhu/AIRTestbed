@@ -131,14 +131,114 @@ class ClassificationEvaluator:
             _print('        %s: %.6f' % (key, value))
 
         return filtered_result
-            
 
-if __name__ == '__main__':
-    from torchvision.models import resnet18, ResNet18_Weights
-    net = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    @staticmethod
+    @torch.no_grad()
+    def evaluate_batch(model, image, num_classes, label=None, onehot=None, device=None):
+        if not device:
+            device = f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu'
 
+        if image.ndim == 4:
+            mode = 'batch'
+        elif image.ndim == 3:
+            mode = 'sample'
+            image = image.unsqueeze(0)
+        else:
+            raise RuntimeError('The image parameter expected [batch size, channels, height, width] or [channels, height, width].')
+
+        got_label = label is not None
+        got_onehot = onehot is not None
+        if got_label == got_onehot:
+            raise RuntimeError('One of label and onehot must be provided.')
+        
+        if got_label:
+            if label.ndim == 1:
+                pass
+            elif label.ndim == 0:
+                label = label.unsqueeze(0)
+            else:
+                raise RuntimeError('The label parameter expected [batch size, label] or [label].')
+            onehot = nn.functional.one_hot(label, num_classes)
+        elif got_onehot:
+            if onehot.ndim == 2:
+                pass
+            elif onehot.ndim == 1:
+                onehot = onehot.unsqueeze(0)
+            else:
+                raise RuntimeError('The onehot parameter expected [batch size, class] or [class].')
+            label = onehot.argmax(dim=1).to(device)
+
+        if image.ndim == 4 and image.size(0) != onehot.size(0):
+            raise RuntimeError('The batch size of image and label (or onehot) must be equal.')
+
+        model.eval().to(device)
+        image = image.to(device)
+        label = label.to(device)
+        onehot = onehot.to(device).float()
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        started_time = time()
+        out = model(image)
+        out_label = out.argmax(dim=1)
+        done_time = time()
+
+        ce = nn.functional.cross_entropy(out, onehot)
+        accuracy = torch.sum(label == out_label)
+
+        if mode == 'batch':
+            return {
+                'timestamp': timestamp,
+                'elapsed': done_time - started_time,
+                'cross_entropy': ce.cpu(),
+                'accuracy': accuracy.cpu(),
+            }
+        elif mode == 'sample':
+            return accuracy.bool().cpu()
+
+
+def test_class(net):
     evaluator = ClassificationEvaluator(net, Names.imagenet, input_size=(224, 224))
     result = evaluator.evaluate(postfix='first_trial', device='cuda:0')
 
     print()
     print(result)
+    
+def test_batch(net):
+    transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(*name_norm_map[Names.imagenet]),
+            transforms.Resize(size=(224, 224)),
+        ])
+
+    dataset = datasets.ImageNet(name_root_map[Names.imagenet], split='val', transform=transform)
+    dataloader = DataLoader(dataset, batch_size=32)
+    for i, (img, label) in enumerate(tqdm(dataloader)):
+        result = ClassificationEvaluator.evaluate_batch(net, img, 1000, label=label, device='cuda:0')
+        print(result)
+        if i == 5:
+            break
+
+def test_one(net):
+    transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(*name_norm_map[Names.imagenet]),
+            transforms.Resize(size=(224, 224)),
+        ])
+
+    dataset = datasets.ImageNet(name_root_map[Names.imagenet], split='val', transform=transform)
+    subset = Subset(dataset, indices=[0, 1, 3, 6, 10])
+    results = []
+    for img, label in subset:
+        label = torch.tensor(label)
+        result = ClassificationEvaluator.evaluate_batch(net, img, 1000, label=label, device='cuda:0')
+        results.append(result)
+    print(results)
+    
+
+if __name__ == '__main__':
+    from torchvision.models import vgg19 as network, VGG19_Weights as Network_Weights
+    net = network(weights=Network_Weights.IMAGENET1K_V1)
+
+    test_class(net)
+    test_batch(net)
+    test_one(net)
