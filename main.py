@@ -93,6 +93,7 @@ try:
         for i, (model_filename, weights_filename) in enumerate(zip(MODELS, WEIGHTS)):
             model_name = model_filename.split(os.sep)[-1].replace('.py', '')
             model = load_model(model_filename, weights_filename)
+
             evaluator = ClassificationEvaluator(model, dataname, INPUT_SIZE, NORMALIZE_INPUT, FLATTEN_INPUT, SUBSAMPLE_RATE)
             result = evaluator.evaluate(batch_size=BATCH_SIZE, metrics=METRICS, device=DEVICE, log_streams=log_streams)
 
