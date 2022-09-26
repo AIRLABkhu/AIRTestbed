@@ -1,15 +1,14 @@
 from os.path import abspath
 
-path = abspath(f'{__file__}/../')
-
 
 class Names:
     imagenet = 'imagenet'
     cifar10 = 'cifar10'
 
+
 name_root_map = {
-    Names.imagenet: f'{path}/archive/imagenet2012',
-    Names.cifar10: f'{path}/archive',
+    Names.imagenet: '/material/data/imagenet-original/',
+    Names.cifar10: '/material/data/',
 }
 
 name_norm_map = {
