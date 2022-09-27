@@ -48,6 +48,7 @@ if args.universal_adversarial_perturbation is not None:
         raise FileNotFoundError('Cannot find the specified perturbation image file.')
     PERTURBATION_MAGNITUDE = args.perturbation_magnitude
 else:
+    PERTURBATION_MAGNITUDE = 10
     PERTURBATION = None
 BATCH_SIZE = args.batch_size
 DESCRIPTION = args.description
