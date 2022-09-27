@@ -11,16 +11,19 @@ from torch.utils.data import Subset, DataLoader
 from torchvision import datasets, transforms
 
 from data import *
+from utils import clip_inf_norm
 
 
 class ClassificationEvaluator:
-    def __init__(self, model, dataset, input_size=None, normalize_input=True, flatten_input=False, subsample_rate=1.0):
+    def __init__(self, model, dataset, input_size=None, normalize_input=True, flatten_input=False, perturbation=None, perturbation_mag=10, subsample_rate=1.0):
         self.model = model
 
         self.dataset_name = dataset
         self.input_size = input_size
         self.normalize_input = normalize_input
         self.flatten_input = flatten_input
+        self.perturbation = perturbation
+        self.perturbation_mag = perturbation_mag
         self.subsample_rate = subsample_rate
 
         if self.dataset_name == Names.imagenet:
@@ -34,11 +37,19 @@ class ClassificationEvaluator:
             raise NotImplementedError(f'{self.dataset_name} is not implemented. Please select one of {names}.')
 
         transform = [transforms.ToTensor()]
+        if input_size:
+            size_transform = transforms.Resize(size=input_size)
+            transform.append(size_transform)
+            if self.perturbation is not None:
+                self.perturbation = size_transform(self.perturbation)
+        if self.perturbation is not None:
+            transform.append(transforms.Lambda(lambda x: x + self.perturbation.to(x.device)))
         if normalize_input:
             mean, std = name_norm_map[self.dataset_name]
-            transform.append(transforms.Normalize(mean, std))
-        if input_size:
-            transform.append(transforms.Resize(size=input_size))
+            norm_transform = transforms.Normalize(mean, std)
+            transform.append(norm_transform)
+            if self.perturbation is not None:
+                self.perturbation = norm_transform(self.perturbation)
         if flatten_input:
             transform.append(transforms.Lambda(lambda x: x.flatten(start_dim=1)))
 
@@ -47,6 +58,13 @@ class ClassificationEvaluator:
             num_samples = len(self.dataset)
             indices = torch.linspace(0, num_samples - 1, int(num_samples * subsample_rate)).int()
             self.dataset = Subset(self.dataset, indices=indices)
+
+        if self.perturbation is not None:
+            if normalize_input:
+                _, std = name_norm_map[self.dataset_name]
+            else:
+                std = (0.5, 0.5, 0.5)
+            self.perturbation = clip_inf_norm(self.perturbation, self.perturbation_mag, std)
 
     @torch.no_grad()
     def evaluate(
@@ -79,6 +97,7 @@ class ClassificationEvaluator:
         _print('        # of classes:', self.num_classes)
         _print('        Normalized:', self.normalize_input)
         _print('        Flattened:', self.flatten_input)
+        _print('        Perturbation:', 'No' if self.perturbation is None else 'Yes')
         _print('    Metrics:')
         for metric in metrics:
             _print('        ', metric, sep='')
@@ -93,6 +112,7 @@ class ClassificationEvaluator:
         total_ce = 0
         
         started_time = time()
+        # self.perturbation = self.perturbation.to(device)
         self.model.eval().to(device)
         for img, gt_label in dataloader:
             img = img.to(device)

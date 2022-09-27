@@ -18,6 +18,8 @@ parser.add_argument('--datasets', '-ds', type=str, help=f'The name of a dataset 
 parser.add_argument('--input-size', '-is', type=str, help='The size of the input image. ex) 224x224')
 parser.add_argument('--normalize-input', '-ni', type=bool, default=True, help='Specifies whether to normalize the input or not.')
 parser.add_argument('--flatten-input', '-fi', type=bool, default=False, help='Specifies whether to flatten the input or not.')
+parser.add_argument('--universal-adversarial-perturbation', '-p', type=str, default=None, help='The file name of a perturbation image.')
+parser.add_argument('--perturbation-magnitude', '-pm', type=float, default=10, help='The maximum inf-norm value of the perturbation image in [0. 255].')
 parser.add_argument('--batch-size', '-b', type=int, default=32, help='The size of a batch on evaluation.')
 parser.add_argument('--description', '-D', type=str, default=None, help='The description string for this experiment.')
 parser.add_argument('--metrics', '-e', type=str, default='all', help=f'The name of a metric or a list of names splitted with \'{split}\'. ex) accuracy or accuracy{split}mean_cls_accuracy')
@@ -37,6 +39,16 @@ if not isinstance(INPUT_SIZE, Iterable) or len(INPUT_SIZE) != 2:
     raise TypeError('Input size must be a 2-tuple of integers.')
 NORMALIZE_INPUT = args.normalize_input
 FLATTEN_INPUT = args.flatten_input
+if args.universal_adversarial_perturbation is not None:
+    if os.path.exists(args.universal_adversarial_perturbation):
+        PERTURBATION = torch.load(args.universal_adversarial_perturbation)
+        if PERTURBATION.ndim == 4:
+            PERTURBATION = PERTURBATION[0]
+    else:
+        raise FileNotFoundError('Cannot find the specified perturbation image file.')
+    PERTURBATION_MAGNITUDE = args.perturbation_magnitude
+else:
+    PERTURBATION = None
 BATCH_SIZE = args.batch_size
 DESCRIPTION = args.description
 METRICS = args.metrics
@@ -94,7 +106,7 @@ try:
             model_name = model_filename.split(os.sep)[-1].replace('.py', '')
             model = load_model(model_filename, weights_filename)
 
-            evaluator = ClassificationEvaluator(model, dataname, INPUT_SIZE, NORMALIZE_INPUT, FLATTEN_INPUT, SUBSAMPLE_RATE)
+            evaluator = ClassificationEvaluator(model, dataname, INPUT_SIZE, NORMALIZE_INPUT, FLATTEN_INPUT, PERTURBATION, PERTURBATION_MAGNITUDE, SUBSAMPLE_RATE)
             result = evaluator.evaluate(batch_size=BATCH_SIZE, metrics=METRICS, device=DEVICE, log_streams=log_streams)
 
             first_column = dataname if i == 0 else ''
