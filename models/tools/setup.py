@@ -2,7 +2,7 @@ import os.path as osp
 import torch
 from torchvision import models as torchmodels
 
-here = osp.abspath(f'{__file__}/..')
+here = osp.abspath(f'{__file__}/../..')
 
 models = (
     torchmodels.resnet18, 
