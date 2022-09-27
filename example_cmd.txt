@@ -1,5 +1,5 @@
 python main.py \
--m example/resnet18.py,example/vgg11_bn.py \
--w example/resnet18_weights.pt,example/vgg11_bn_weights.pt \
+-m models/resnet18.py,models/vgg11_bn.py \
+-w models/resnet18_weights.pt,models/vgg11_bn_weights.pt \
 -ds imagenet,imagenet -is 224x224 \
 -o out.csv -l out.log -ss 0.005
