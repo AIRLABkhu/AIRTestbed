@@ -129,4 +129,7 @@ dmypy.json
 .pyre/
 
 # Project
+*.csv
 data/archive/
+models/*.py
+models/*.pt
