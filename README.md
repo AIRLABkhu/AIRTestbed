@@ -75,6 +75,12 @@ def get_model():
 ```bash
 $ git clone https://github.com/AIRLABkhu/AIRTestbed.git
 ```
+or download the zipped archive and unzip.
+```bash
+$ wget https://github.com/AIRLABkhu/AIRTestbed/archive/refs/heads/main.zip
+$ unzip main.zip
+$ rm main.zip
+```
 <br/>
 
 ### 2. Datasets Settings
