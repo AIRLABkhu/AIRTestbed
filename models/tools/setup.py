@@ -17,6 +17,11 @@ models = (
     torchmodels.vgg19_bn,
 
     torchmodels.inception_v3,
+    
+    torchmodels.densenet121,
+    torchmodels.densenet161,
+    torchmodels.densenet169,
+    torchmodels.densenet201,
 )
 params = (
     torchmodels.ResNet18_Weights.IMAGENET1K_V1,
@@ -31,6 +36,11 @@ params = (
     torchmodels.VGG19_BN_Weights.IMAGENET1K_V1,
 
     torchmodels.Inception_V3_Weights.IMAGENET1K_V1,
+    
+    torchmodels.DenseNet121_Weights,
+    torchmodels.DenseNet161_Weights,
+    torchmodels.DenseNet169_Weights,
+    torchmodels.DenseNet201_Weights,
 )
 
 for model, param in zip(models, params):
